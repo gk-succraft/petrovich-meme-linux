@@ -12,33 +12,44 @@ warn()  { echo -e "${RED}→${NC} $*"; }
 step()  { echo -e "${CYAN}==>${NC} $*"; }
 
 # ---- deps ----
-step "Installing dependencies..."
+step "Checking dependencies..."
 
-install_deps() {
-    if command -v apt &>/dev/null; then
-        info "apt detected"
-        sudo apt update -qq
-        sudo apt install -y feh xclip xdotool
-    elif command -v dnf &>/dev/null; then
-        info "dnf detected"
-        sudo dnf install -y feh xclip xdotool
-    elif command -v pacman &>/dev/null; then
-        info "pacman detected"
-        sudo pacman -S --noconfirm feh xclip xdotool
-    elif command -v zypper &>/dev/null; then
-        info "zypper detected"
-        sudo zypper install -y feh xclip xdotool
-    elif command -v nix-shell &>/dev/null; then
-        info "nix detected — skipping deps, use nix develop from the repo"
-        return
-    else
-        warn "Unknown package manager. Install manually: feh xclip xdotool"
-        return
+MISSING=()
+
+check_bin() {
+    local bin="$1"
+    if ! command -v "$bin" &>/dev/null; then
+        MISSING+=("$bin")
     fi
-    info "Dependencies installed"
 }
 
-install_deps
+check_bin feh
+check_bin xclip
+check_bin xdotool
+
+if [[ ${#MISSING[@]} -eq 0 ]]; then
+    info "All dependencies already installed"
+else
+    info "Missing: ${MISSING[*]}"
+
+    if command -v apt &>/dev/null; then
+        sudo apt update -qq
+        sudo apt install -y "${MISSING[@]}"
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y "${MISSING[@]}"
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -S --noconfirm "${MISSING[@]}"
+    elif command -v zypper &>/dev/null; then
+        sudo zypper install -y "${MISSING[@]}"
+    elif command -v nix-shell &>/dev/null; then
+        warn "nix detected — install missing packages in your config or use nix develop"
+        exit 1
+    else
+        warn "Unknown package manager. Install manually: ${MISSING[*]}"
+        exit 1
+    fi
+    info "Dependencies installed"
+fi
 
 # ---- install / update ----
 step "Installing petrovich-meme to $INSTALL_DIR..."
