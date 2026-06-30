@@ -41,15 +41,20 @@ install_deps() {
 # ---- install / update ----
 step "Installing petrovich-meme to $INSTALL_DIR..."
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCAL_SCRIPT="$SCRIPT_DIR/petrovich-meme"
+LOCAL_SRC=""
 
-if [[ -f "$LOCAL_SCRIPT" ]]; then
-    # running from repo — copy locally
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    local_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$local_dir/petrovich-meme" ]]; then
+        LOCAL_SRC="$local_dir"
+    fi
+fi
+
+if [[ -n "$LOCAL_SRC" ]]; then
     mkdir -p "$INSTALL_DIR"
-    cp "$LOCAL_SCRIPT" "$INSTALL_DIR/petrovich-meme"
-    if [[ -d "$SCRIPT_DIR/stickers" ]]; then
-        cp -r "$SCRIPT_DIR/stickers" "$INSTALL_DIR/stickers" 2>/dev/null || true
+    cp "$LOCAL_SRC/petrovich-meme" "$INSTALL_DIR/petrovich-meme"
+    if [[ -d "$LOCAL_SRC/stickers" ]]; then
+        cp -r "$LOCAL_SRC/stickers" "$INSTALL_DIR/stickers" 2>/dev/null || true
     fi
     info "Installed from local repo"
 elif [[ -d "$INSTALL_DIR/.git" ]]; then
@@ -73,13 +78,13 @@ info "$BIN_NAME → $BIN_DIR/$BIN_NAME"
 
 # ---- PATH check ----
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-    warn ""
-    warn "Add $BIN_DIR to your PATH:"
+    export PATH="$BIN_DIR:$PATH"
+    info "Added $BIN_DIR to PATH (this session)"
+    echo ""
+    warn "To make it permanent, add this to your shell rc:"
     echo ""
     echo "  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
-    echo "  source ~/.bashrc"
     echo ""
 fi
 
-echo ""
 step "Done! Run: $BIN_NAME"
