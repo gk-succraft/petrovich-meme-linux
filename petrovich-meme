@@ -25,12 +25,16 @@ missing() {
     fi
 }
 
+is_wayland() {
+    [[ -n "${WAYLAND_DISPLAY:-}" ]] || [[ "${XDG_SESSION_TYPE:-}" == "wayland" ]]
+}
+
 command -v feh &>/dev/null    || missing "feh"
 
-if [[ -z "$WAYLAND_DISPLAY" ]]; then
-    command -v xclip &>/dev/null || missing "xclip"
-else
+if is_wayland; then
     command -v wl-copy &>/dev/null || missing "wl-clipboard"
+else
+    command -v xclip &>/dev/null || missing "xclip"
 fi
 
 # ---- stickers ----
@@ -42,7 +46,7 @@ if [[ ${#FILES[@]} -eq 0 ]]; then
 fi
 
 # ---- copy command ----
-if [[ -n "$WAYLAND_DISPLAY" ]]; then
+if is_wayland; then
     COPY_CMD='wl-copy --type image/png < %f && kill $PPID'
 else
     COPY_CMD='xclip -selection clipboard -target image/png -i %f && kill $PPID'
