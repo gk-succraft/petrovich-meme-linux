@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STICKER_DIR="${STICKER_DIR:-$SCRIPT_DIR/stickers}"
+WINDOW_TITLE="${STICKER_PICKER_TITLE:-Stickers}"
+
+mkdir -p "$STICKER_DIR"
+
+# ---- deps ----
+die() { echo "ERROR: $*" >&2; exit 1; }
+
+command -v feh &>/dev/null    || die "feh not found. Install: sudo apt install feh"
+
+if [[ -z "$WAYLAND_DISPLAY" ]]; then
+    command -v xclip &>/dev/null || die "xclip not found. Install: sudo apt install xclip"
+else
+    command -v wl-copy &>/dev/null || die "wl-clipboard not found. Install: sudo apt install wl-clipboard"
+fi
+
+# ---- stickers ----
+shopt -s nullglob
+FILES=("$STICKER_DIR"/*.{png,jpg,jpeg,gif,webp,bmp})
+if [[ ${#FILES[@]} -eq 0 ]]; then
+    echo "No images in $STICKER_DIR" >&2
+    exit 0
+fi
+
+# ---- copy command ----
+if [[ -n "$WAYLAND_DISPLAY" ]]; then
+    COPY_CMD='wl-copy --type image/png < %f && kill $PPID'
+else
+    COPY_CMD='xclip -selection clipboard -target image/png -i %f && kill $PPID'
+fi
+
+# ---- launch ----
+feh -t \
+    -E 130 -y 130 \
+    -W 820 \
+    --index-info '' \
+    --title "$WINDOW_TITLE" \
+    --action1 "$COPY_CMD" \
+    --draw-actions \
+    "$STICKER_DIR" &
+FEH_PID=$!
+
+for _ in $(seq 1 20); do
+    sleep 0.1
+    if WID=$(xdotool search --pid "$FEH_PID" 2>/dev/null | head -1); then
+        xdotool set_window --name "$WINDOW_TITLE" "$WID" 2>/dev/null && break
+    fi
+done
+
+wait "$FEH_PID"
