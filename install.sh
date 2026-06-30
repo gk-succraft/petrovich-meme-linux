@@ -11,8 +11,8 @@ info()  { echo -e "${GREEN}→${NC} $*"; }
 warn()  { echo -e "${RED}→${NC} $*"; }
 step()  { echo -e "${CYAN}==>${NC} $*"; }
 
-# ---- detect package manager ----
-step "Detecting package manager..."
+# ---- deps ----
+step "Installing dependencies..."
 
 install_deps() {
     if command -v apt &>/dev/null; then
@@ -37,6 +37,8 @@ install_deps() {
     fi
     info "Dependencies installed"
 }
+
+install_deps
 
 # ---- install / update ----
 step "Installing petrovich-meme to $INSTALL_DIR..."
