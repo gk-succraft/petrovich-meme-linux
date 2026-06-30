@@ -4,34 +4,35 @@ Sticker picker for Linux — grid of memes, press `1` to copy to clipboard, past
 
 ## Install
 
+### One-liner (curl)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/user/petrovich-meme-linux/main/install.sh | bash
+```
+
+Then run:
+
+```bash
+petrovich-meme
+```
+
 ### Nix / NixOS
 
 ```bash
-nix run github:user/petrovich-meme-linux     # run directly
-nix profile install github:user/petrovich-meme-linux  # install
+nix run github:user/petrovich-meme-linux
 ```
 
-Dev shell (if cloned):
+### Dev shell
 
 ```bash
 nix develop
+./petrovich-meme
 ```
-
-### Debian / Ubuntu
-
-```bash
-sudo apt install feh xclip xdotool
-ln -s "$(pwd)/sticker-picker" ~/.local/bin/sticker-picker
-```
-
-### Other distros
-
-Install the equivalents of `feh`, `xclip` (or `wl-clipboard` for Wayland), `xdotool`.
 
 ## Usage
 
 ```bash
-./sticker-picker
+petrovich-meme
 ```
 
 - Arrow keys / mouse — select sticker
@@ -40,13 +41,13 @@ Install the equivalents of `feh`, `xclip` (or `wl-clipboard` for Wayland), `xdot
 
 ## Adding stickers
 
-Drop PNG / JPG / GIF / WebP files into the `stickers/` directory.
+Drop PNG / JPG / GIF / WebP files into `~/Pictures/stickers/`.
 
 When installed via nix, stickers live in `~/.local/share/petrovich-meme/stickers/`.
 
 ## Hotkey
 
-Bind `sticker-picker` to a keyboard shortcut in your DE/WM settings (e.g. `Ctrl+Shift+S`).
+Bind `petrovich-meme` to a keyboard shortcut in your DE/WM settings (e.g. `Ctrl+Shift+S`).
 
 ## Env vars
 
