@@ -7,7 +7,7 @@ Sticker picker for Linux — grid of memes, press `1` to copy to clipboard, past
 ### One-liner (curl)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/user/petrovich-meme-linux/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gk-succraft/petrovich-meme-linux/main/install.sh | bash
 ```
 
 Then run:
@@ -19,7 +19,7 @@ petrovich-meme
 ### Nix / NixOS
 
 ```bash
-nix run github:user/petrovich-meme-linux
+nix run github:gk-succraft/petrovich-meme-linux
 ```
 
 ### Dev shell

@@ -4,7 +4,7 @@ set -euo pipefail
 INSTALL_DIR="${PETROVICH_INSTALL_DIR:-$HOME/.local/share/petrovich-meme}"
 BIN_DIR="${PETROVICH_BIN_DIR:-$HOME/.local/bin}"
 BIN_NAME="petrovich-meme"
-REPO="https://github.com/user/petrovich-meme-linux.git"
+REPO="https://github.com/gk-succraft/petrovich-meme-linux.git"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()  { echo -e "${GREEN}→${NC} $*"; }
