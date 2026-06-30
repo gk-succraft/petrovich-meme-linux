@@ -2,20 +2,35 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STICKER_DIR="${STICKER_DIR:-$SCRIPT_DIR/stickers}"
-WINDOW_TITLE="${STICKER_PICKER_TITLE:-Stickers}"
 
+if [[ -n "${STICKER_DIR:-}" ]]; then
+    : # user override
+elif [[ -d "$SCRIPT_DIR/stickers" ]]; then
+    STICKER_DIR="$SCRIPT_DIR/stickers"          # dev / cloned repo
+else
+    STICKER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/petrovich-meme/stickers"  # installed
+fi
+
+WINDOW_TITLE="${STICKER_PICKER_TITLE:-Stickers}"
 mkdir -p "$STICKER_DIR"
 
 # ---- deps ----
 die() { echo "ERROR: $*" >&2; exit 1; }
+missing() {
+    local bin="$1"
+    if [[ -f /etc/NIXOS ]] || [[ -n "${NIX_PATH:-}" ]]; then
+        die "$bin not found. Run: nix develop"
+    else
+        die "$bin not found. Install with your package manager"
+    fi
+}
 
-command -v feh &>/dev/null    || die "feh not found. Install: sudo apt install feh"
+command -v feh &>/dev/null    || missing "feh"
 
 if [[ -z "$WAYLAND_DISPLAY" ]]; then
-    command -v xclip &>/dev/null || die "xclip not found. Install: sudo apt install xclip"
+    command -v xclip &>/dev/null || missing "xclip"
 else
-    command -v wl-copy &>/dev/null || die "wl-clipboard not found. Install: sudo apt install wl-clipboard"
+    command -v wl-copy &>/dev/null || missing "wl-clipboard"
 fi
 
 # ---- stickers ----
