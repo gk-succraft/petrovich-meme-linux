@@ -6,36 +6,34 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -n "${STICKER_DIR:-}" ]]; then
     : # user override
 elif [[ -d "$SCRIPT_DIR/stickers" ]]; then
-    STICKER_DIR="$SCRIPT_DIR/stickers"          # dev / cloned repo
+    STICKER_DIR="$SCRIPT_DIR/stickers"
 else
-    STICKER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/petrovich-meme/stickers"  # installed
+    STICKER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/petrovich-meme/stickers"
 fi
 
-WINDOW_TITLE="${STICKER_PICKER_TITLE:-Stickers}"
+WINDOW_TITLE="${STICKER_PICKER_TITLE:-Petrovich Stickers}"
+MODE="${1:-grid}"
+
 mkdir -p "$STICKER_DIR"
 
-# ---- deps ----
-die() { echo "ERROR: $*" >&2; exit 1; }
-missing() {
-    local bin="$1"
-    if [[ -f /etc/NIXOS ]] || [[ -n "${NIX_PATH:-}" ]]; then
-        die "$bin not found. Run: nix develop"
+# ---- helpers ----
+die()    { echo "ERROR: $*" >&2; exit 1; }
+msg()    { echo "→ $*"; }
+is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" ]] || [[ "${XDG_SESSION_TYPE:-}" == "wayland" ]]; }
+
+copy_to_clipboard() {
+    local file="$1"
+    if is_wayland; then
+        wl-copy --type image/png < "$file"
     else
-        die "$bin not found. Install with your package manager"
+        xclip -selection clipboard -target image/png -i "$file"
     fi
 }
 
-is_wayland() {
-    [[ -n "${WAYLAND_DISPLAY:-}" ]] || [[ "${XDG_SESSION_TYPE:-}" == "wayland" ]]
+notify_copied() {
+    local name="$1" file="$2"
+    notify-send "Sticker copied" "$name" -i "$file" 2>/dev/null &
 }
-
-command -v feh &>/dev/null    || missing "feh"
-
-if is_wayland; then
-    command -v wl-copy &>/dev/null || missing "wl-clipboard"
-else
-    command -v xclip &>/dev/null || missing "xclip"
-fi
 
 # ---- stickers ----
 shopt -s nullglob
@@ -45,29 +43,99 @@ if [[ ${#FILES[@]} -eq 0 ]]; then
     exit 0
 fi
 
-# ---- copy command ----
-if is_wayland; then
-    COPY_CMD='wl-copy --type image/png < %f && kill $PPID'
-else
-    COPY_CMD='xclip -selection clipboard -target image/png -i %f && kill $PPID'
-fi
-
-# ---- launch ----
-feh -t \
-    -E 130 -y 130 \
-    -W 820 \
-    --index-info '' \
-    --title "$WINDOW_TITLE" \
-    --action1 "$COPY_CMD" \
-    --draw-actions \
-    "$STICKER_DIR" &
-FEH_PID=$!
-
-for _ in $(seq 1 20); do
-    sleep 0.1
-    if WID=$(xdotool search --pid "$FEH_PID" 2>/dev/null | head -1); then
-        xdotool set_window --name "$WINDOW_TITLE" "$WID" 2>/dev/null && break
+# ---- grid mode (default) ----
+run_grid() {
+    command -v feh &>/dev/null    || die "feh not found. Install with your package manager"
+    if is_wayland; then
+        command -v wl-copy &>/dev/null || die "wl-clipboard not found"
+    else
+        command -v xclip &>/dev/null || die "xclip not found"
     fi
-done
 
-wait "$FEH_PID"
+    local copy_cmd
+    if is_wayland; then
+        copy_cmd='wl-copy --type image/png < %f && notify-send "Sticker copied" "$(basename "%f")" -i "%f" 2>/dev/null & kill $PPID'
+    else
+        copy_cmd='xclip -selection clipboard -target image/png -i %f && notify-send "Sticker copied" "$(basename "%f")" -i "%f" 2>/dev/null & kill $PPID'
+    fi
+
+    feh -t \
+        -E 130 -y 130 \
+        -W 900 \
+        --index-info '' \
+        --title "$WINDOW_TITLE" \
+        --action1 "$copy_cmd" \
+        --draw-actions \
+        "$STICKER_DIR" &
+    local feh_pid=$!
+
+    for _ in $(seq 1 20); do
+        sleep 0.1
+        if WID=$(xdotool search --pid "$feh_pid" 2>/dev/null | head -1); then
+            xdotool set_window --name "$WINDOW_TITLE" "$WID" 2>/dev/null && break
+        fi
+    done
+
+    if is_wayland && command -v wlrctl &>/dev/null; then
+        sleep 0.3
+        wlrctl toplevel focus app_id:"feh" 2>/dev/null || true
+    fi
+
+    wait "$feh_pid"
+}
+
+# ---- menu mode ----
+run_menu() {
+    local backend="${1:-auto}"
+    local names=()
+    for f in "${FILES[@]}"; do
+        names+=("$(basename "$f")")
+    done
+
+    local choice=""
+
+    if [[ "$backend" == "auto" ]]; then
+        command -v fzf    &>/dev/null && backend="fzf"
+        command -v wofi   &>/dev/null && [[ "$backend" == "auto" ]] && backend="wofi"
+        command -v rofi   &>/dev/null && [[ "$backend" == "auto" ]] && backend="rofi"
+        command -v zenity &>/dev/null && [[ "$backend" == "auto" ]] && backend="zenity"
+    fi
+
+    case "$backend" in
+        fzf)
+            command -v fzf &>/dev/null || die "fzf not found"
+            choice=$(printf '%s\n' "${names[@]}" | fzf --prompt="Stickers> " --no-info)
+            ;;
+        wofi)
+            command -v wofi &>/dev/null || die "wofi not found"
+            choice=$(printf '%s\n' "${names[@]}" | wofi --dmenu -p "Petrovich Stickers")
+            ;;
+        rofi)
+            command -v rofi &>/dev/null || die "rofi not found"
+            choice=$(printf '%s\n' "${names[@]}" | rofi -dmenu -p "Petrovich Stickers" -i -no-custom -width 40)
+            ;;
+        zenity)
+            command -v zenity &>/dev/null || die "zenity not found"
+            choice=$(zenity --list --column="Pick a sticker" "${names[@]}" \
+                --title="Petrovich Stickers" --width=400 --height=550 --hide-header 2>/dev/null)
+            ;;
+        *) die "No menu backend available. Install wofi, rofi, or zenity." ;;
+    esac
+
+    [[ -n "$choice" ]] || exit 0
+
+    local file="$STICKER_DIR/$choice"
+    copy_to_clipboard "$file"
+    notify_copied "$choice" "$file"
+}
+
+# ---- dispatch ----
+case "$MODE" in
+    grid|default|feh|--feh|"")  run_grid ;;
+    menu|-m|--menu|--list)      run_menu "auto" ;;
+    wofi|--wofi)                 run_menu "wofi" ;;
+    rofi|--rofi)                 run_menu "rofi" ;;
+    zenity|--zenity)             run_menu "zenity" ;;
+    fzf|--fzf)                   run_menu "fzf" ;; 
+    *) die "Unknown: $MODE. Usage: petrovich-meme [--feh|--fzf|--wofi|--rofi|--zenity|--menu]" ;;
+esac

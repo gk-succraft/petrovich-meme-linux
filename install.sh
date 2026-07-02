@@ -26,6 +26,7 @@ check_bin() {
 check_bin feh
 check_bin xclip
 check_bin xdotool
+check_bin notify-send
 
 if [[ ${#MISSING[@]} -eq 0 ]]; then
     info "All dependencies already installed"
@@ -34,7 +35,14 @@ else
 
     if command -v apt &>/dev/null; then
         sudo apt update -qq
-        sudo apt install -y "${MISSING[@]}"
+        local apt_pkgs=()
+        for pkg in "${MISSING[@]}"; do
+            case "$pkg" in
+                notify-send) apt_pkgs+=("libnotify-bin") ;;
+                *) apt_pkgs+=("$pkg") ;;
+            esac
+        done
+        sudo apt install -y "${apt_pkgs[@]}"
     elif command -v dnf &>/dev/null; then
         sudo dnf install -y "${MISSING[@]}"
     elif command -v pacman &>/dev/null; then
